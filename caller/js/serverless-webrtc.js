@@ -1,8 +1,6 @@
-var cfg = { "iceServers": [{ "url": "stun:23.21.150.121" }] },
-    con = { 'optional': [{ 'DtlsSrtpKeyAgreement': true }] };
 
-var pc1 = new RTCPeerConnection(cfg, con),
-    dc1 = null, tn1 = null;
+var pc1 = null,
+    dc1 = null;
 
 var activedc;
 
@@ -13,12 +11,40 @@ attachToCreateAnOffer();
 attachOnSentAnOffer();
 attachOnAnswerReceived();
 
-function sendMessage(text) {
-    var message = { message: text };
-    activedc.send(JSON.stringify(message));
+initializeCaller();
+
+function initializeCaller() {
+
+    setupCaller();
+    setupSignaling();
+    setupChannel();
 }
 
-function setupDC1() {
+function setupCaller() {
+    var cfg = { "iceServers": [{ "url": "stun:23.21.150.121" }] }, con = { 'optional': [{ 'DtlsSrtpKeyAgreement': true }] };
+    pc1 = new RTCPeerConnection(cfg, con);
+}
+
+function setupSignaling() {
+    pc1.onicecandidate = function (e) {
+        console.log("ICE candidate (pc1)", e);
+    
+        if (e.candidate == null) {
+            // we can take the offer only NOW
+            var desc = pc1.localDescription;
+            showDescription(desc);
+        }
+    };
+    
+    pc1.onconnection = handleOnconnection;
+
+    pc1.onsignalingstatechange = onsignalingstatechange;
+    
+    pc1.oniceconnectionstatechange = oniceconnectionstatechange;
+    pc1.onicegatheringstatechange = onicegatheringstatechange;
+}
+
+function setupChannel() {
     try {
         dc1 = pc1.createDataChannel('test', { reliable: true });
 
@@ -56,23 +82,13 @@ function setupDC1() {
 }
 
 function createLocalOffer() {
-    setupDC1();
-
+    
     pc1.createOffer(function (desc) {
         pc1.setLocalDescription(desc, function () { });
         // WAIT FOR ON ICE CANDIDATE TO TAKE THIS DESC AS VALID
         console.log("created local offer", desc);
     }, function () { console.warn("Couldn't create offer"); });
 }
-
-pc1.onicecandidate = function (e) {
-    console.log("ICE candidate (pc1)", e);
-
-    if (e.candidate == null) {
-        // we can take the offer only NOW
-        $('#localOffer').html(JSON.stringify(pc1.localDescription));
-    }
-};
 
 function handleOnconnection() {
     console.log("Datachannel connected");
@@ -84,8 +100,6 @@ function handleOnconnection() {
     $('#waitForConnection').remove();
     $('#messageTextBox').focus();
 }
-
-pc1.onconnection = handleOnconnection;
 
 function onsignalingstatechange(state) {
     console.info('signaling state change:', state);
@@ -99,10 +113,6 @@ function onicegatheringstatechange(state) {
     console.info('ice gathering state change:', state);
 }
 
-pc1.onsignalingstatechange = onsignalingstatechange;
-pc1.oniceconnectionstatechange = oniceconnectionstatechange;
-pc1.onicegatheringstatechange = onicegatheringstatechange;
-
 function handleAnswerFromPC2(answer) {
     var answerDesc = new RTCSessionDescription(JSON.parse(answer));
 
@@ -112,25 +122,10 @@ function handleAnswerFromPC2(answer) {
     pc1.setRemoteDescription(answerDesc);
 }
 
-
-function getTimestamp() {
-    var totalSec = new Date().getTime() / 1000;
-    var hours = parseInt(totalSec / 3600) % 24;
-    var minutes = parseInt(totalSec / 60) % 60;
-    var seconds = parseInt(totalSec % 60);
-
-    var result = (hours < 10 ? "0" + hours : hours) + ":" +
-        (minutes < 10 ? "0" + minutes : minutes) + ":" +
-        (seconds < 10 ? "0" + seconds : seconds);
-
-    return result;
+function sendMessage(text) {
+    var message = { message: text };
+    activedc.send(JSON.stringify(message));
 }
-
-function writeToChatLog(message, message_type) {
-    document.getElementById('chatlog').innerHTML += '<p class=\"' + message_type + '\">' + "[" + getTimestamp() + "] " + message + '</p>';
-}
-
-
 
 
 
@@ -182,3 +177,25 @@ function onSendMessage() {
 
     return false;
 };
+
+function showDescription(desc) {
+    $('#localOffer').html(JSON.stringify(desc));
+}
+
+function getTimestamp() {
+    var totalSec = new Date().getTime() / 1000;
+    var hours = parseInt(totalSec / 3600) % 24;
+    var minutes = parseInt(totalSec / 60) % 60;
+    var seconds = parseInt(totalSec % 60);
+
+    var result = (hours < 10 ? "0" + hours : hours) + ":" +
+        (minutes < 10 ? "0" + minutes : minutes) + ":" +
+        (seconds < 10 ? "0" + seconds : seconds);
+
+    return result;
+}
+
+function writeToChatLog(message, message_type) {
+    document.getElementById('chatlog').innerHTML += '<p class=\"' + message_type + '\">' + "[" + getTimestamp() + "] " + message + '</p>';
+}
+
