@@ -32,12 +32,6 @@ $('#createBtn').click(function() {
 });
 
 
-
-
-
-
-
-
 $('#offerSentBtn').click(function() {
     $('#getRemoteAnswer').modal('show');
 });
@@ -49,39 +43,15 @@ $('#answerRecdBtn').click(function() {
     $('#waitForConnection').modal('show');
 });
 
-$('#fileBtn').change(function() {
-    var file = this.files[0];
-    console.log(file);
-
-    sendFile(file);
-});
-
-function fileSent(file) {
-    console.log(file + " sent");
-}
-
-function fileProgress(file) {
-    console.log(file + " progress");
-}
-
-function sendFile(data) {
-    if (data.size) {
-        FileSender.send({
-          file: data,
-          onFileSent: fileSent,
-          onFileProgress: fileProgress,
-        });
-    }
-}
-
 function sendMessage() {
     if ($('#messageTextBox').val()) {
         var channel = new RTCMultiSession();
+        
         writeToChatLog($('#messageTextBox').val(), "text-success");
+        
         channel.send({message: $('#messageTextBox').val()});
+        
         $('#messageTextBox').val("");
-
-        // Scroll chat text area to the bottom on new input.
         $('#chatlog').scrollTop($('#chatlog')[0].scrollHeight);
     }
 
@@ -90,14 +60,11 @@ function sendMessage() {
 
 function setupDC1() {
     try {
-        var fileReceiver1 = new FileReceiver();
-        
         dc1 = pc1.createDataChannel('test', {reliable:true});
         
         activedc = dc1;
         
         console.log("Created datachannel (pc1)");
-        
 
         dc1.onopen = function (e) {
             console.log('data channel connect');
@@ -107,27 +74,22 @@ function setupDC1() {
 
         dc1.onmessage = function (e) {
             console.log("Got message (pc1)", e.data);
-            if (e.data.size) {
-                fileReceiver1.receive(e.data, {});
+
+            if (e.data.charCodeAt(0) == 2) {
+                console.warn('invalid message');
+                // The first message we get from Firefox (but not Chrome)
+                // is literal ASCII 2 and I don't understand why -- if we
+                // leave it in, JSON.parse() will barf.
+                return;
             }
-            else {
-                if (e.data.charCodeAt(0) == 2) {
-                   // The first message we get from Firefox (but not Chrome)
-                   // is literal ASCII 2 and I don't understand why -- if we
-                   // leave it in, JSON.parse() will barf.
-                   return;
-                }
-                console.log(e);
-                var data = JSON.parse(e.data);
-                if (data.type === 'file') {
-                    fileReceiver1.receive(e.data, {});
-                }
-                else {
-                    writeToChatLog(data.message, "text-info");
-                    // Scroll chat text area to the bottom on new input.
-                    $('#chatlog').scrollTop($('#chatlog')[0].scrollHeight);
-                }
-            }
+
+            console.log(e);
+
+            var data = JSON.parse(e.data);
+
+            writeToChatLog(data.message, "text-info");
+            // Scroll chat text area to the bottom on new input.
+            $('#chatlog').scrollTop($('#chatlog')[0].scrollHeight);
         };
         
     } catch (e) { console.warn("No data channel (pc1)", e); }
@@ -135,6 +97,7 @@ function setupDC1() {
 
 function createLocalOffer() {
     setupDC1();
+    
     pc1.createOffer(function (desc) {
         pc1.setLocalDescription(desc, function () {});
         console.log("created local offer", desc);
@@ -156,7 +119,6 @@ function handleOnconnection() {
     //   - first onconnection() hides the dialog, then someone clicks
     //     on answerSentBtn which shows it, and it stays shown forever.
     $('#waitForConnection').remove();
-    $('#showLocalAnswer').modal('hide');
     $('#messageTextBox').focus();
 }
 
