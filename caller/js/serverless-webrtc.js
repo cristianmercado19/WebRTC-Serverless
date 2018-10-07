@@ -1,6 +1,6 @@
 
-var pc1 = null;
-var activedc = null;
+var localConnection = null;
+var dataChannel = null;
 
 initialModalState();
 attachToCreateAnOffer();
@@ -20,18 +20,18 @@ function setupCaller() {
     var cfg = { "iceServers": [{ "url": "stun:23.21.150.121" }] };
     var con = { 'optional': [{ 'DtlsSrtpKeyAgreement': true }] };
 
-    pc1 = new RTCPeerConnection(cfg, con);
+    localConnection = new RTCPeerConnection(cfg, con);
 }
 
 function setupSignaling() {
-    pc1.onicecandidate = onIceCandidate;
+    localConnection.onicecandidate = onIceCandidate;
     
-    pc1.onconnection = handleOnConnection;
+    localConnection.onconnection = onConnection;
 
-    pc1.onsignalingstatechange = onSignalingStateChange;
+    localConnection.onsignalingstatechange = onSignalingStateChange;
     
-    pc1.oniceconnectionstatechange = onIceConnectionStateChange;
-    pc1.onicegatheringstatechange = onIceGatheringStateChange;
+    localConnection.oniceconnectionstatechange = onIceConnectionStateChange;
+    localConnection.onicegatheringstatechange = onIceGatheringStateChange;
 }
 
 function onIceCandidate(e) {
@@ -39,22 +39,22 @@ function onIceCandidate(e) {
 
     if (e.candidate == null) {
         // we can take the offer only NOW
-        var desc = pc1.localDescription;
+        var desc = localConnection.localDescription;
         showDescription(desc);
     }
 };
 
 function setupChannel() {
     try {
-        activedc = pc1.createDataChannel('test', { reliable: true });
+        dataChannel = localConnection.createDataChannel('test', { reliable: true });
 
         console.log("Created datachannel (pc1)");
 
-        activedc.onopen = function (e) {
+        dataChannel.onopen = function (e) {
             showDataChannelOpenMessage();
         }
 
-        activedc.onmessage = function (e) {
+        dataChannel.onmessage = function (e) {
             showMessageReceived(e);
         };
 
@@ -64,22 +64,15 @@ function setupChannel() {
 
 function createLocalOffer() {
     
-    pc1.createOffer(function (desc) {
-        pc1.setLocalDescription(desc, function () { });
+    localConnection.createOffer(function (desc) {
+        localConnection.setLocalDescription(desc, function () { });
         // WAIT FOR ON ICE CANDIDATE TO TAKE THIS DESC AS VALID
         console.log("created local offer", desc);
     }, function () { console.warn("Couldn't create offer"); });
 }
 
-function handleOnConnection() {
-    console.log("Datachannel connected");
-    writeToChatLog("Datachannel connected", "text-success");
-    $('#waitForConnection').modal('hide');
-    // If we didn't call remove() here, there would be a race on pc2:
-    //   - first onconnection() hides the dialog, then someone clicks
-    //     on answerSentBtn which shows it, and it stays shown forever.
-    $('#waitForConnection').remove();
-    $('#messageTextBox').focus();
+function onConnection() {
+    removeWaitForConnectionModal();
 }
 
 function onSignalingStateChange(state) {
@@ -97,12 +90,12 @@ function onIceGatheringStateChange(state) {
 function setAnswerFromPC2(answer) {
     var answerDesc = new RTCSessionDescription(JSON.parse(answer));
 
-    pc1.setRemoteDescription(answerDesc);
+    localConnection.setRemoteDescription(answerDesc);
 }
 
 function sendMessage(text) {
     var message = { message: text };
-    activedc.send(JSON.stringify(message));
+    dataChannel.send(JSON.stringify(message));
 }
 
 
@@ -111,6 +104,17 @@ function sendMessage(text) {
 /*
 VIEW
 */
+
+function removeWaitForConnectionModal() {
+    console.log("Datachannel connected");
+    writeToChatLog("Datachannel connected", "text-success");
+    $('#waitForConnection').modal('hide');
+    // If we didn't call remove() here, there would be a race on pc2:
+    //   - first onconnection() hides the dialog, then someone clicks
+    //     on answerSentBtn which shows it, and it stays shown forever.
+    $('#waitForConnection').remove();
+    $('#messageTextBox').focus();
+}
 
 function showMessageReceived(e) {
     console.log("Got message (pc1)", e.data);
