@@ -1,10 +1,6 @@
 
-var pc1 = null,
-    dc1 = null;
-
-var activedc;
-
-var pc1icedone = false;
+var pc1 = null;
+var activedc = null;
 
 initialModalState();
 attachToCreateAnOffer();
@@ -36,49 +32,30 @@ function setupSignaling() {
         }
     };
     
-    pc1.onconnection = handleOnconnection;
+    pc1.onconnection = handleOnConnection;
 
-    pc1.onsignalingstatechange = onsignalingstatechange;
+    pc1.onsignalingstatechange = onSignalingStateChange;
     
-    pc1.oniceconnectionstatechange = oniceconnectionstatechange;
-    pc1.onicegatheringstatechange = onicegatheringstatechange;
+    pc1.oniceconnectionstatechange = onIceConnectionStateChange;
+    pc1.onicegatheringstatechange = onIceGatheringStateChange;
 }
 
 function setupChannel() {
     try {
-        dc1 = pc1.createDataChannel('test', { reliable: true });
-
-        activedc = dc1;
+        activedc = pc1.createDataChannel('test', { reliable: true });
 
         console.log("Created datachannel (pc1)");
 
-        dc1.onopen = function (e) {
-            console.log('data channel connect');
-            $('#waitForConnection').modal('hide');
-            $('#waitForConnection').remove();
+        activedc.onopen = function (e) {
+            showDataChannelOpenMessage();
         }
 
-        dc1.onmessage = function (e) {
-            console.log("Got message (pc1)", e.data);
-
-            if (e.data.charCodeAt(0) == 2) {
-                console.warn('invalid message');
-                // The first message we get from Firefox (but not Chrome)
-                // is literal ASCII 2 and I don't understand why -- if we
-                // leave it in, JSON.parse() will barf.
-                return;
-            }
-
-            console.log(e);
-
-            var data = JSON.parse(e.data);
-
-            writeToChatLog(data.message, "text-info");
-            // Scroll chat text area to the bottom on new input.
-            $('#chatlog').scrollTop($('#chatlog')[0].scrollHeight);
+        activedc.onmessage = function (e) {
+            showMessageReceived(e);
         };
 
     } catch (e) { console.warn("No data channel (pc1)", e); }
+
 }
 
 function createLocalOffer() {
@@ -90,7 +67,7 @@ function createLocalOffer() {
     }, function () { console.warn("Couldn't create offer"); });
 }
 
-function handleOnconnection() {
+function handleOnConnection() {
     console.log("Datachannel connected");
     writeToChatLog("Datachannel connected", "text-success");
     $('#waitForConnection').modal('hide');
@@ -101,23 +78,20 @@ function handleOnconnection() {
     $('#messageTextBox').focus();
 }
 
-function onsignalingstatechange(state) {
+function onSignalingStateChange(state) {
     console.info('signaling state change:', state);
 }
 
-function oniceconnectionstatechange(state) {
+function onIceConnectionStateChange(state) {
     console.info('ice connection state change:', state);
 }
 
-function onicegatheringstatechange(state) {
+function onIceGatheringStateChange(state) {
     console.info('ice gathering state change:', state);
 }
 
-function handleAnswerFromPC2(answer) {
+function setAnswerFromPC2(answer) {
     var answerDesc = new RTCSessionDescription(JSON.parse(answer));
-
-    console.log("Received remote answer: ", answerDesc);
-    writeToChatLog("Received remote answer", "text-success");
 
     pc1.setRemoteDescription(answerDesc);
 }
@@ -133,6 +107,32 @@ function sendMessage(text) {
 /*
 VIEW
 */
+
+function showMessageReceived(e) {
+    console.log("Got message (pc1)", e.data);
+
+    if (e.data.charCodeAt(0) == 2) {
+        console.warn('invalid message');
+        // The first message we get from Firefox (but not Chrome)
+        // is literal ASCII 2 and I don't understand why -- if we
+        // leave it in, JSON.parse() will barf.
+        return;
+    }
+
+    console.log(e);
+
+    var data = JSON.parse(e.data);
+
+    writeToChatLog(data.message, "text-info");
+    // Scroll chat text area to the bottom on new input.
+    $('#chatlog').scrollTop($('#chatlog')[0].scrollHeight);
+}
+
+function showDataChannelOpenMessage() {
+    console.log('data channel connect');
+    $('#waitForConnection').modal('hide');
+    $('#waitForConnection').remove();
+}
 
 function initialModalState() {
     $('#showLocalOffer').modal('hide');
@@ -157,7 +157,11 @@ function attachOnSentAnOffer() {
 function attachOnAnswerReceived() {
     $('#answerRecdBtn').click(function () {
         var answer = $('#remoteAnswer').val();
-        handleAnswerFromPC2(answer);
+        
+        console.log("Received remote answer: ", JSON.parse(answer));
+        writeToChatLog("Received remote answer", "text-success");
+
+        setAnswerFromPC2(answer);
 
         $('#waitForConnection').modal('show');
     });
