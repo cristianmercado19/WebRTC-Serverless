@@ -17,20 +17,14 @@ function initializeCaller() {
 }
 
 function setupCaller() {
-    var cfg = { "iceServers": [{ "url": "stun:23.21.150.121" }] }, con = { 'optional': [{ 'DtlsSrtpKeyAgreement': true }] };
+    var cfg = { "iceServers": [{ "url": "stun:23.21.150.121" }] };
+    var con = { 'optional': [{ 'DtlsSrtpKeyAgreement': true }] };
+
     pc1 = new RTCPeerConnection(cfg, con);
 }
 
 function setupSignaling() {
-    pc1.onicecandidate = function (e) {
-        console.log("ICE candidate (pc1)", e);
-    
-        if (e.candidate == null) {
-            // we can take the offer only NOW
-            var desc = pc1.localDescription;
-            showDescription(desc);
-        }
-    };
+    pc1.onicecandidate = onIceCandidate;
     
     pc1.onconnection = handleOnConnection;
 
@@ -39,6 +33,16 @@ function setupSignaling() {
     pc1.oniceconnectionstatechange = onIceConnectionStateChange;
     pc1.onicegatheringstatechange = onIceGatheringStateChange;
 }
+
+function onIceCandidate(e) {
+    console.log("ICE candidate (pc1)", e);
+
+    if (e.candidate == null) {
+        // we can take the offer only NOW
+        var desc = pc1.localDescription;
+        showDescription(desc);
+    }
+};
 
 function setupChannel() {
     try {
