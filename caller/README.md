@@ -1,3 +1,18 @@
+# Caller
+
+0. attach to onIceCandidate
+1. setup channel
+2. create offer
+    setuplocalDescription
+
+3. offer is valid after onIceCandidate
+    pc1.localDescription in TEXT_AREA
+
+
+
+
+
+
 serverless-webrtc
 =================
 
@@ -53,3 +68,5 @@ http://blog.printf.net/articles/2014/07/01/serverless-webrtc-continued
 http://cjb.github.io/serverless-webrtc/serverless-webrtc.html
 
 -- Chris Ball <chris@printf.net> (http://printf.net/)
+
+

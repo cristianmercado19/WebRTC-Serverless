@@ -28,9 +28,9 @@ $('#createOrJoin').modal('show');
 
 $('#createBtn').click(function() {
     $('#showLocalOffer').modal('show');
+
     createLocalOffer();
 });
-
 
 $('#offerSentBtn').click(function() {
     $('#getRemoteAnswer').modal('show');
@@ -38,8 +38,11 @@ $('#offerSentBtn').click(function() {
 
 $('#answerRecdBtn').click(function() {
     var answer = $('#remoteAnswer').val();
+
     var answerDesc = new RTCSessionDescription(JSON.parse(answer));
+    
     handleAnswerFromPC2(answerDesc);
+    
     $('#waitForConnection').modal('show');
 });
 
@@ -97,16 +100,19 @@ function setupDC1() {
 
 function createLocalOffer() {
     setupDC1();
-    
+
     pc1.createOffer(function (desc) {
         pc1.setLocalDescription(desc, function () {});
+        // WAIT FOR ON ICE CANDIDATE TO TAKE THIS DESC AS VALID
         console.log("created local offer", desc);
     }, function () {console.warn("Couldn't create offer");});
 }
 
 pc1.onicecandidate = function (e) {
     console.log("ICE candidate (pc1)", e);
+
     if (e.candidate == null) {
+        // we can take the offer only NOW
         $('#localOffer').html(JSON.stringify(pc1.localDescription));
     }
 };
@@ -143,79 +149,10 @@ pc1.onicegatheringstatechange = onicegatheringstatechange;
 function handleAnswerFromPC2(answerDesc) {
     console.log("Received remote answer: ", answerDesc);
     writeToChatLog("Received remote answer", "text-success");
+    
     pc1.setRemoteDescription(answerDesc);
 }
 
-function handleCandidateFromPC2(iceCandidate) {
-    pc1.addIceCandidate(iceCandidate);
-}
-
-
-/* THIS IS BOB, THE ANSWERER/RECEIVER */
-
-var pc2 = new RTCPeerConnection(cfg, con),
-    dc2 = null;
-
-var pc2icedone = false;
-
-pc2.ondatachannel = function (e) {
-    var fileReceiver2 = new FileReceiver();
-    var datachannel = e.channel || e; // Chrome sends event, FF sends raw channel
-    console.log("Received datachannel (pc2)", arguments);
-    dc2 = datachannel;
-    activedc = dc2;
-    dc2.onopen = function (e) {
-        console.log('data channel connect');
-        $('#waitForConnection').remove();
-    }
-    dc2.onmessage = function (e) {
-        console.log("Got message (pc2)", e.data);
-        if (e.data.size) {
-            fileReceiver2.receive(e.data, {});
-        }
-        else {
-            var data = JSON.parse(e.data);
-            if (data.type === 'file') {
-                fileReceiver2.receive(e.data, {});
-            }
-            else {
-                writeToChatLog(data.message, "text-info");
-                // Scroll chat text area to the bottom on new input.
-                $('#chatlog').scrollTop($('#chatlog')[0].scrollHeight);
-            }
-        }
-    };
-};
-
-function handleOfferFromPC1(offerDesc) {
-    pc2.setRemoteDescription(offerDesc);
-    pc2.createAnswer(function (answerDesc) {
-        writeToChatLog("Created local answer", "text-success");
-        console.log("Created local answer: ", answerDesc);
-        pc2.setLocalDescription(answerDesc);
-    }, function () { console.warn("No create answer"); });
-}
-
-pc2.onicecandidate = function (e) {
-    console.log("ICE candidate (pc2)", e);
-};
-
-pc2.onsignalingstatechange = onsignalingstatechange;
-pc2.oniceconnectionstatechange = oniceconnectionstatechange;
-pc2.onicegatheringstatechange = onicegatheringstatechange;
-
-function handleCandidateFromPC1(iceCandidate) {
-    pc2.addIceCandidate(iceCandidate);
-}
-
-pc2.onaddstream = function (e) {
-    console.log("Got remote stream", e);
-    var el = new Audio();
-    el.autoplay = true;
-    attachMediaStream(el, e.stream);
-};
-
-pc2.onconnection = handleOnconnection;
 
 function getTimestamp() {
     var totalSec = new Date().getTime() / 1000;
