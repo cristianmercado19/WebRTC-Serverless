@@ -38,29 +38,8 @@ $('#createBtn').click(function() {
 
 
 
-
-
-
-
-// $('#joinBtn').click(function() {
-//     $('#getRemoteOffer').modal('show');
-// });
-
 $('#offerSentBtn').click(function() {
     $('#getRemoteAnswer').modal('show');
-});
-
-$('#offerRecdBtn').click(function() {
-    var offer = $('#remoteOffer').val();
-    var offerDesc = new RTCSessionDescription(JSON.parse(offer));
-    console.log("Received remote offer", offerDesc);
-    writeToChatLog("Received remote offer", "text-success");
-    handleOfferFromPC1(offerDesc);
-    $('#showLocalAnswer').modal('show');
-});
-
-$('#answerSentBtn').click(function() {
-    $('#waitForConnection').modal('show');
 });
 
 $('#answerRecdBtn').click(function() {
@@ -257,8 +236,6 @@ function handleOfferFromPC1(offerDesc) {
 
 pc2.onicecandidate = function (e) {
     console.log("ICE candidate (pc2)", e);
-    if (e.candidate == null)
-       $('#localAnswer').html(JSON.stringify(pc2.localDescription));
 };
 
 pc2.onsignalingstatechange = onsignalingstatechange;
