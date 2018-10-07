@@ -149,7 +149,7 @@ pc1.onicecandidate = function (e) {
     }
 };
 
-function handleOnconnection() {
+function handleOnConnection() {
     console.log("Datachannel connected");
     writeToChatLog("Datachannel connected", "text-success");
     $('#waitForConnection').modal('hide');
@@ -161,7 +161,7 @@ function handleOnconnection() {
     $('#messageTextBox').focus();
 }
 
-pc1.onconnection = handleOnconnection;
+pc1.onconnection = handleOnConnection;
 
 function onsignalingstatechange(state) {
     console.info('signaling state change:', state);
@@ -228,6 +228,7 @@ pc2.ondatachannel = function (e) {
 
 function handleOfferFromPC1(offerDesc) {
     pc2.setRemoteDescription(offerDesc);
+
     pc2.createAnswer(function (answerDesc) {
         writeToChatLog("Created local answer", "text-success");
         console.log("Created local answer: ", answerDesc);
@@ -245,18 +246,7 @@ pc2.onsignalingstatechange = onsignalingstatechange;
 pc2.oniceconnectionstatechange = oniceconnectionstatechange;
 pc2.onicegatheringstatechange = onicegatheringstatechange;
 
-function handleCandidateFromPC1(iceCandidate) {
-    pc2.addIceCandidate(iceCandidate);
-}
-
-pc2.onaddstream = function (e) {
-    console.log("Got remote stream", e);
-    var el = new Audio();
-    el.autoplay = true;
-    attachMediaStream(el, e.stream);
-};
-
-pc2.onconnection = handleOnconnection;
+pc2.onconnection = handleOnConnection;
 
 function getTimestamp() {
     var totalSec = new Date().getTime() / 1000;

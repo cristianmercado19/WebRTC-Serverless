@@ -36,9 +36,11 @@ function setupSignaling() {
 
 function onIceCandidate(e) {
     console.log("ICE candidate (pc1)", e);
+    console.info("ICE localDesc: ", JSON.stringify(localConnection.localDescription))
 
     if (e.candidate == null) {
         // we can take the offer only NOW
+        console.info("ICE FINAL localDesc: ", JSON.stringify(localConnection.localDescription))
         var desc = localConnection.localDescription;
         showDescription(desc);
     }
@@ -65,7 +67,9 @@ function setupChannel() {
 function createLocalOffer() {
     
     localConnection.createOffer(function (desc) {
-        localConnection.setLocalDescription(desc, function () { });
+        console.info("CREATED localDesc: ", JSON.stringify(desc))
+
+        localConnection.setLocalDescription(desc);
         // WAIT FOR ON ICE CANDIDATE TO TAKE THIS DESC AS VALID
         console.log("created local offer", desc);
     }, function () { console.warn("Couldn't create offer"); });
