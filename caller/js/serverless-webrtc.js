@@ -1,70 +1,29 @@
-/* See also:
-    http://www.html5rocks.com/en/tutorials/webrtc/basics/
-    https://code.google.com/p/webrtc-samples/source/browse/trunk/apprtc/index.html
-
-    https://webrtc-demos.appspot.com/html/pc1.html
-*/
-
-var cfg = {"iceServers":[{"url":"stun:23.21.150.121"}]},
-    con = { 'optional': [{'DtlsSrtpKeyAgreement': true}] };
-
-/* THIS IS ALICE, THE CALLER/SENDER */
+var cfg = { "iceServers": [{ "url": "stun:23.21.150.121" }] },
+    con = { 'optional': [{ 'DtlsSrtpKeyAgreement': true }] };
 
 var pc1 = new RTCPeerConnection(cfg, con),
     dc1 = null, tn1 = null;
 
-// Since the same JS file contains code for both sides of the connection,
-// activedc tracks which of the two possible datachannel variables we're using.
 var activedc;
 
 var pc1icedone = false;
 
-$('#showLocalOffer').modal('hide');
-$('#getRemoteAnswer').modal('hide');
-$('#waitForConnection').modal('hide');
-$('#createOrJoin').modal('show');
+initialModalState();
+attachToCreateAnOffer();
+attachOnSentAnOffer();
+attachOnAnswerReceived();
 
-$('#createBtn').click(function() {
-    $('#showLocalOffer').modal('show');
-
-    createLocalOffer();
-});
-
-$('#offerSentBtn').click(function() {
-    $('#getRemoteAnswer').modal('show');
-});
-
-$('#answerRecdBtn').click(function() {
-    var answer = $('#remoteAnswer').val();
-
-    var answerDesc = new RTCSessionDescription(JSON.parse(answer));
-    
-    handleAnswerFromPC2(answerDesc);
-    
-    $('#waitForConnection').modal('show');
-});
-
-function sendMessage() {
-    if ($('#messageTextBox').val()) {
-        
-        writeToChatLog($('#messageTextBox').val(), "text-success");
-        var message = {message: $('#messageTextBox').val()};
-        
-        activedc.send( JSON.stringify(message));
-        
-        $('#messageTextBox').val("");
-        $('#chatlog').scrollTop($('#chatlog')[0].scrollHeight);
-    }
-
-    return false;
-};
+function sendMessage(text) {
+    var message = { message: text };
+    activedc.send(JSON.stringify(message));
+}
 
 function setupDC1() {
     try {
-        dc1 = pc1.createDataChannel('test', {reliable:true});
-        
+        dc1 = pc1.createDataChannel('test', { reliable: true });
+
         activedc = dc1;
-        
+
         console.log("Created datachannel (pc1)");
 
         dc1.onopen = function (e) {
@@ -92,7 +51,7 @@ function setupDC1() {
             // Scroll chat text area to the bottom on new input.
             $('#chatlog').scrollTop($('#chatlog')[0].scrollHeight);
         };
-        
+
     } catch (e) { console.warn("No data channel (pc1)", e); }
 }
 
@@ -100,10 +59,10 @@ function createLocalOffer() {
     setupDC1();
 
     pc1.createOffer(function (desc) {
-        pc1.setLocalDescription(desc, function () {});
+        pc1.setLocalDescription(desc, function () { });
         // WAIT FOR ON ICE CANDIDATE TO TAKE THIS DESC AS VALID
         console.log("created local offer", desc);
-    }, function () {console.warn("Couldn't create offer");});
+    }, function () { console.warn("Couldn't create offer"); });
 }
 
 pc1.onicecandidate = function (e) {
@@ -144,10 +103,12 @@ pc1.onsignalingstatechange = onsignalingstatechange;
 pc1.oniceconnectionstatechange = oniceconnectionstatechange;
 pc1.onicegatheringstatechange = onicegatheringstatechange;
 
-function handleAnswerFromPC2(answerDesc) {
+function handleAnswerFromPC2(answer) {
+    var answerDesc = new RTCSessionDescription(JSON.parse(answer));
+
     console.log("Received remote answer: ", answerDesc);
     writeToChatLog("Received remote answer", "text-success");
-    
+
     pc1.setRemoteDescription(answerDesc);
 }
 
@@ -159,8 +120,8 @@ function getTimestamp() {
     var seconds = parseInt(totalSec % 60);
 
     var result = (hours < 10 ? "0" + hours : hours) + ":" +
-                 (minutes < 10 ? "0" + minutes : minutes) + ":" +
-                 (seconds  < 10 ? "0" + seconds : seconds);
+        (minutes < 10 ? "0" + minutes : minutes) + ":" +
+        (seconds < 10 ? "0" + seconds : seconds);
 
     return result;
 }
@@ -168,3 +129,56 @@ function getTimestamp() {
 function writeToChatLog(message, message_type) {
     document.getElementById('chatlog').innerHTML += '<p class=\"' + message_type + '\">' + "[" + getTimestamp() + "] " + message + '</p>';
 }
+
+
+
+
+
+
+/*
+VIEW
+*/
+
+function initialModalState() {
+    $('#showLocalOffer').modal('hide');
+    $('#getRemoteAnswer').modal('hide');
+    $('#waitForConnection').modal('hide');
+    $('#createOrJoin').modal('show');
+}
+
+function attachToCreateAnOffer() {
+    $('#createBtn').click(function () {
+        $('#showLocalOffer').modal('show');
+        createLocalOffer();
+    });
+}
+
+function attachOnSentAnOffer() {
+    $('#offerSentBtn').click(function () {
+        $('#getRemoteAnswer').modal('show');
+    });
+}
+
+function attachOnAnswerReceived() {
+    $('#answerRecdBtn').click(function () {
+        var answer = $('#remoteAnswer').val();
+        handleAnswerFromPC2(answer);
+
+        $('#waitForConnection').modal('show');
+    });
+}
+
+function onSendMessage() {
+    if ($('#messageTextBox').val()) {
+
+        writeToChatLog($('#messageTextBox').val(), "text-success");
+
+        var text = $('#messageTextBox').val();
+        sendMessage(text);
+
+        $('#messageTextBox').val("");
+        $('#chatlog').scrollTop($('#chatlog')[0].scrollHeight);
+    }
+
+    return false;
+};
